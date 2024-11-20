@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch index.js",
-    "db:migrate": "knex migrate:latest",
-    "db:seed": "knex seed:run"
+    "db:migrate": "npx knex migrate:latest",
+    "db:seed": "npx knex seed:run"
   },
   "author": "",
   "license": "ISC",
