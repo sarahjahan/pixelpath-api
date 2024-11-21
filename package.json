@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch index.js",
-    "db:migrate": "npx knex migrate:latest",
+    "db:latest": "npx knex migrate:latest",
+    "db:rollback": "knex migrate:rollback",
+    "db:down": "knex migrate:down",
     "db:seed": "npx knex seed:run"
   },
   "author": "",
