@@ -20,7 +20,7 @@ router.route("/")
                 'Authorization': API_KEY
             }
         })
-          console.log(data)
+          console.log("Games retrieved from API")
         //   res.status(200).json(data);
 
         } catch (err) {
