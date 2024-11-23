@@ -119,9 +119,9 @@ const removeGame = async (req, res) => {
     if (!game) {
       return res.status(404).json({ message: `Game with ID ${id} not found` });
     }
-    await knex("games").where(id).del();
+    const removedGame = await knex("games").where(game).del();
     // No Content response
-    res.sendStatus(204);
+    res.sendStatus(204).json(removedGame);
   } catch (error) {
     res.status(500).json({
       message: `Unable to delete game: ${error}`
