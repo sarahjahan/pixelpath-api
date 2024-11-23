@@ -26,7 +26,13 @@ const getGamesList = async () => {
 
 const APIGames = async (_req, res) => {
     try {
-        const games = await getGamesList(); 
+        const sortBy = req.query.sortBy || "title" || "status" || "rating";
+        const order = req.query.order || "asc";
+        let query = knex("games");
+        if (sortBy && sortBy !== "no_sort") {
+          query = query.orderBy(sortBy, order);
+        }
+        const games = await getGamesList().orderBy(sortBy, order);
         res.status(200).json(games.data);
     }catch (err) {
         res.status(500).send(`Error retreiving games list: ${err.message}`)
@@ -35,7 +41,13 @@ const APIGames = async (_req, res) => {
 
 const myGames = async (req, res) => {
     try {
-        const games = await knex('games');
+        const sortBy = req.query.sortBy || "title" || "status" || "rating";
+        const order = req.query.order || "asc";
+        let query = knex("games");
+        if (sortBy && sortBy !== "no_sort") {
+          query = query.orderBy(sortBy, order);
+        }
+        const games = await knex('games').orderBy(sortBy, order);
         res.status(200).json(games);
     }catch (err) {
         res.status(500).send(`Error retreiving my games library: ${err.message}`)
