@@ -9,5 +9,7 @@ router.route("/search")
 
 router.route("/").get(gamesController.myGames)
 .post(gamesController.addGame)
+// .put(gamesController.editGame)
+.delete(gamesController.removeGame)
 
 export default router;

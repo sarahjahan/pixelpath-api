@@ -59,5 +59,28 @@ const addGame = async (req, res) => {
         res.status(500).send(`Unable to add game: ${err.message}`)
         }
     };
+
+
+const removeGame = async (req, res) => {
+    const id = req.body;
+  try {
+    const game = await knex("games").where(id).first();
+
+    if (!game) {
+      return res.status(404).json({ message: `Game with ID ${id} not found` });
+    }
+    await knex("games").where(id).del();
+    // No Content response
+    res.sendStatus(204);
+  } catch (error) {
+    res.status(500).json({
+      message: `Unable to delete game: ${error}`
+    });
+  }
+};
+
+
+
+
   
-  export { APIGames, myGames, addGame }
+  export { APIGames, myGames, addGame, removeGame }
