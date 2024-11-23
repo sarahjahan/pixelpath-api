@@ -24,13 +24,40 @@ const getGamesList = async () => {
         console.error("Error retreiving games:", error)
     }};
 
-const allGames = async (_req, res) => {
+const APIGames = async (_req, res) => {
     try {
         const games = await getGamesList(); 
         res.status(200).json(games.data);
     }catch (err) {
-        res.status(500).send(`Error retreiving games: ${err.message}`)
+        res.status(500).send(`Error retreiving games list: ${err.message}`)
         }
-    }
+    };
+
+const myGames = async (req, res) => {
+    try {
+        const games = await knex('games');
+        res.status(200).json(games);
+    }catch (err) {
+        res.status(500).send(`Error retreiving my games library: ${err.message}`)
+        }
+    };
+
+const addGame = async (req, res) => {
+    // let {
+    //     user_id,
+    //     title,
+    //     status,
+    //     notes,
+    //     tags,
+    //     summary,
+    //   } = req.body; // <-- for validation , req.body needs db reqd values only 
+    try {
+        const [newGameID] = await knex('games').insert(req.body);
+        const gameAdded = await knex("games").where({ id: newGameID });
+        res.status(201).json(gameAdded);
+    }catch (err) {
+        res.status(500).send(`Unable to add game: ${err.message}`)
+        }
+    };
   
-  export { allGames }
+  export { APIGames, myGames, addGame }
