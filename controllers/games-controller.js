@@ -121,7 +121,7 @@ const removeGame = async (req, res) => {
     }
     const removedGame = await knex("games").where(game).del();
     // No Content response
-    res.sendStatus(204).json(removedGame);
+    res.sendStatus(204);
   } catch (error) {
     res.status(500).json({
       message: `Unable to delete game: ${error}`
