@@ -62,24 +62,24 @@ const addGame = async (req, res) => {
 
 
 const editGame = async (req, res) => {
-    // const  { id } = req.params;
-    // console.log(id)
+    const { gameid } = req.params;
+    // console.log(req.params.id);
+    // console.log(gameid)
+    // console.log(req.params)
     try {
         const rowsUpdated = await knex("games")
-          .where({id: req.params.id})
+          .where({id: req.params.gameid})
           .update(req.body);
-    
         if (rowsUpdated === 0) {
           return res.status(404).json({
-            message: `Game with ID ${req.params.id} not found, ${error}`,
+            message: `Game with ID ${req.params.gameid} not found, ${error}`,
           });
         }
-    
-        const updatedGame = await knex("games").where({id: req.params.id});
+        const updatedGame = await knex("games").where({id: req.params.gameid});
         res.status(200).json(updatedGame[0]);
       } catch (error) {
         res.status(500).json({
-          message: `Unable to update games with ID ${req.params.id}: ${error}`,
+          message: `Unable to update games with ID ${req.params.gameid}: ${error}`,
         });
       }
     };

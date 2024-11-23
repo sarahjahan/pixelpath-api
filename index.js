@@ -16,6 +16,7 @@ import gamesRoutes from "./routes/games-routes.js";
 
 // app.use("/api/users", usersRoutes);
 app.use("/api/games", gamesRoutes);
+
 // app.use("/api/tags", tagsRoutes);
 
 

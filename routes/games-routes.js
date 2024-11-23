@@ -12,4 +12,8 @@ router.route("/").get(gamesController.myGames)
 .put(gamesController.editGame)
 .delete(gamesController.removeGame)
 
+
+router.route("/:gameid").get(gamesController.myGames)
+.put(gamesController.editGame)
+
 export default router;
