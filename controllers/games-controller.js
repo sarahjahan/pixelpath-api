@@ -60,6 +60,21 @@ const addGame = async (req, res) => {
         }
     };
 
+    const singleGame = async (req, res) => {
+      const { gameid } = req.params;
+      try {
+        if (!game) {
+          return res.status(404).json({ message: `Game with ID ${id} does not exist` });
+        }
+          const getGameDetails = await knex("games").where({id: gameid});
+          res.status(200).json(getGameDetails);
+        } catch (error) {
+          res.status(500).json({
+            message: `Unable to obtain game with ID ${req.params.gameid}, ${error}`,
+          });
+        }
+      };
+
 
 const editGame = async (req, res) => {
     const { gameid } = req.params;
@@ -68,14 +83,14 @@ const editGame = async (req, res) => {
     // console.log(req.params)
     try {
         const rowsUpdated = await knex("games")
-          .where({id: req.params.gameid})
+          .where({id: gameid})
           .update(req.body);
         if (rowsUpdated === 0) {
           return res.status(404).json({
             message: `Game with ID ${req.params.gameid} not found, ${error}`,
           });
         }
-        const updatedGame = await knex("games").where({id: req.params.gameid});
+        const updatedGame = await knex("games").where({id: gameid});
         res.status(200).json(updatedGame[0]);
       } catch (error) {
         res.status(500).json({
@@ -106,4 +121,4 @@ const removeGame = async (req, res) => {
 
 
   
-  export { APIGames, myGames, addGame, editGame, removeGame }
+  export { APIGames, myGames, addGame, editGame, removeGame, singleGame }

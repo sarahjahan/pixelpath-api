@@ -13,7 +13,7 @@ router.route("/").get(gamesController.myGames)
 .delete(gamesController.removeGame)
 
 
-router.route("/:gameid").get(gamesController.myGames)
+router.route("/:gameid").get(gamesController.singleGame)
 .put(gamesController.editGame)
 
 export default router;
