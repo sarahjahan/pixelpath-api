@@ -75,7 +75,7 @@ const addGame = async (req, res) => {
     const singleGame = async (req, res) => {
       const { gameid } = req.params;
       try {
-        if (!game) {
+        if (!gameid) {
           return res.status(404).json({ message: `Game with ID ${id} does not exist` });
         }
           const getGameDetails = await knex("games").where({id: gameid});
