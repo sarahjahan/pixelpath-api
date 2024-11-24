@@ -112,14 +112,14 @@ const editGame = async (req, res) => {
     };
 
 const removeGame = async (req, res) => {
-    const id = req.body;
+    const { gameid } = req.params;
   try {
-    const game = await knex("games").where(id).first();
+    const game = await knex("games").where({id: gameid});
 
     if (!game) {
-      return res.status(404).json({ message: `Game with ID ${id} not found` });
+      return res.status(404).json({ message: `Game with ID ${{id: gameid}} not found` });
     }
-    const removedGame = await knex("games").where(game).del();
+    const removedGame = await knex("games").where({id: gameid}).del();
     // No Content response
     res.sendStatus(204);
   } catch (error) {
