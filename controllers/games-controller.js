@@ -1,39 +1,49 @@
 import initKnex from "knex";
 import configuration from "../knexfile.js";
+// import uuid from "uuid-v4";
 const knex = initKnex(configuration);
 
 import axios from "axios";
 const { API_KEY, CLIENT_ID } = process.env
+// const gameID = uuid()
 
 
 const getGamesList = async () => {
     try {const query = `
-            fields name, genres.name, cover.url;
-            where aggregated_rating > 95;
+            fields name, genres.name, storyline, themes.name, cover.url; 
+            where aggregated_rating > 97;
             sort aggregated_rating asc;
             limit 20;`;
-            const data = await axios.post("https://api.igdb.com/v4/games", query, {
+            const apiResponse = await axios.post("https://api.igdb.com/v4/games", query, {
                 headers: {
                     'Client-ID': CLIENT_ID,
                     'Authorization': API_KEY
                 }
             })
             console.log("Games retrieved from API");
-            return data;
+            const mappedResults = apiResponse.data.map((apiResult) => mapApiToDbFields(apiResult));
+            return mappedResults;
     } catch (err) {
-        console.error("Error retreiving games:", error)
+        console.error("Error retreiving games:", err)
     }};
+    
 
-const APIGames = async (_req, res) => {
+    const mapApiToDbFields = (apiResult) => {
+      return {
+        id: apiResult.id, // Maps 'id' from API to 'gameID' in DB
+        title: apiResult.name, // Maps 'name' from API to 'title' in DB
+        genres: apiResult.genres[0].name,
+        // ? apiResult.genres.join(", ") : null, Convert genres array to a string
+        coverArt: apiResult.cover.url || null, // Handles missing cover art
+        summary: apiResult.storyline || null, // Optional field
+      };
+    };
+
+
+const APIGames = async (req, res) => {
     try {
-        const sortBy = req.query.sortBy || "title" || "status" || "rating";
-        const order = req.query.order || "asc";
-        let query = knex("games");
-        if (sortBy && sortBy !== "no_sort") {
-          query = query.orderBy(sortBy, order);
-        }
-        const games = await getGamesList().orderBy(sortBy, order);
-        res.status(200).json(games.data);
+        const games = await getGamesList();
+        res.status(200).json(games);
     }catch (err) {
         res.status(500).send(`Error retreiving games list: ${err.message}`)
         }
@@ -55,16 +65,25 @@ const myGames = async (req, res) => {
     };
 
 const addGame = async (req, res) => {
-    // let {
-    //     user_id,
-    //     title,
-    //     status,
-    //     notes,
-    //     tags,
-    //     summary,
-    //   } = req.body; // <-- for validation , req.body needs db reqd values only 
+    let {
+        user_id,
+        title,
+        status,
+        notes,
+        tags,
+        coverArt
+      } = req.body; // <-- for validation , req.body needs db reqd values only 
+      if ( !title ) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
     try {
-        const [newGameID] = await knex('games').insert(req.body);
+        const [newGameID] = await knex('games').insert({
+          user_id,
+          title,
+          coverArt,
+          tags: tags ? tags.join(", ") : null,
+          notes: notes || null, 
+        });
         const gameAdded = await knex("games").where({ id: newGameID });
         res.status(201).json(gameAdded);
     }catch (err) {

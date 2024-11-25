@@ -7,8 +7,8 @@ export function up(knex) {
       .createTable("games", (table) => {
         table.increments("id").primary();
         table.integer('user_id').unsigned().notNullable().references('id').inTable('users').onDelete('CASCADE');
-        table.string("title").notNullable();
-        table.string('summary').notNullable();
+        table.string("title").notNullable().unique();
+        table.string('summary');
         table.string('coverArt').notNullable();
         table.string('status').defaultTo('Not Played');
         table.integer('rating').notNullable().defaultTo(0);

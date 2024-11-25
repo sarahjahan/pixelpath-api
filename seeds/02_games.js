@@ -13,7 +13,7 @@ export async function seed(knex) {
       status: 'Playing',
       rating: 5,
       summary: 'Link wakes up after a century of slumber to defeat Calamity Ganon and save Hyrule in this sprawling open-world adventure.',
-      coverArt: 'https://example.com/images/breath-of-the-wild.jpg',
+      coverArt: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co3p2d.webp',
       notes: 'Incredible open world and storytelling.',
     },
     {
@@ -23,7 +23,7 @@ export async function seed(knex) {
       status: 'Want to Play',
       rating: 0,
       summary: 'Build and customize your own island paradise in this delightful life simulation game.',
-      coverArt: 'https://example.com/images/animal-crossing.jpg',
+      coverArt: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co3wls.webp',
       notes: 'Perfect for relaxing.',
     },
     {
@@ -33,7 +33,7 @@ export async function seed(knex) {
       status: 'Completed',
       rating: 4,
       summary: 'Explore a dark fantasy world filled with dangerous enemies, intense combat, and mysterious lore.',
-      coverArt: 'https://example.com/images/dark-souls-3.jpg',
+      coverArt: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1vcf.webp',
       notes: 'Challenging but very rewarding gameplay.',
     },
   ]);
