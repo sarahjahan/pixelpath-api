@@ -42,8 +42,19 @@ const getGamesList = async () => {
 
 const APIGames = async (req, res) => {
     try {
-        const games = await getGamesList();
-        res.status(200).json(games);
+        const apiGames = await getGamesList();
+        const myGames = await knex("games").select("id");
+        const dbGameIDs = myGames.map((game) => game.id);
+        const gamesWithOwnership = apiGames.map((APIGame) => {
+          if (dbGameIDs.includes(APIGame.id)) {
+              // Game is in collection, add "isOwned" property as true
+              return { ...APIGame, isOwned: true };
+          }
+          // Otherwise, just return original game with "isOwned" as false
+          return { ...APIGame, isOwned: false };
+      });
+
+        res.status(200).json(gamesWithOwnership);
     }catch (err) {
         res.status(500).send(`Error retreiving games list: ${err.message}`)
         }
@@ -65,19 +76,17 @@ const myGames = async (req, res) => {
     };
 
 const addGame = async (req, res) => {
-    let {
-        user_id,
-        title,
-        status,
-        notes,
-        tags,
-        coverArt
-      } = req.body; // <-- for validation , req.body needs db reqd values only 
-      if ( !title ) {
+  const { user_id, game_id, title, status, notes, tags, coverArt } = req.body; // <-- for validation , req.body needs db reqd values only 
+      if (!game_id || !title ) {
         return res.status(400).json({ error: "Missing required fields" });
       }
     try {
+      const existingGame = await knex('games').where({ id: game_id }).first();
+        if (existingGame) {
+            return res.status(400).json({ error: "Game already exists in the collection." });
+        }
         const [newGameID] = await knex('games').insert({
+          id: game_id,
           user_id,
           title,
           coverArt,
