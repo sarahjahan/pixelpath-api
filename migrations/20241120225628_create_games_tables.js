@@ -10,7 +10,7 @@ export function up(knex) {
         table.string("title").notNullable().unique();
         table.string('summary');
         table.string('coverArt').notNullable();
-        table.string('status').defaultTo('Not Played');
+        table.string('status').defaultTo('Want To Play');
         table.integer('rating').notNullable().defaultTo(0);
         table.text('notes');
         table.string('tags');

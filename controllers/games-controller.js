@@ -48,10 +48,10 @@ const APIGames = async (req, res) => {
         const gamesWithOwnership = apiGames.map((APIGame) => {
           if (dbGameIDs.includes(APIGame.id)) {
               // Game is in collection, add "isOwned" property as true
-              return { ...APIGame, isOwned: true };
+              return { ...APIGame, isOwned: true, status: "Want to Play"};
           }
           // Otherwise, just return original game with "isOwned" as false
-          return { ...APIGame, isOwned: false };
+          return { ...APIGame, isOwned: false, status: "Want to Play" };
       });
 
         res.status(200).json(gamesWithOwnership);
