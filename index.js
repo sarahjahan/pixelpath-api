@@ -12,12 +12,11 @@ app.use(express.static("public"));
 
 // import usersRoutes from "./routes/users-routes.js";
 import gamesRoutes from "./routes/games-routes.js";
-// import tagsRoutes from "./routes/tags-routes.js";
+import tagsRoutes from "./routes/tags-routes.js";
 
 // app.use("/api/users", usersRoutes);
 app.use("/api/games", gamesRoutes);
-
-// app.use("/api/tags", tagsRoutes);
+app.use("/api/tags", tagsRoutes);
 
 
 app.listen(PORT, () => {
