@@ -64,43 +64,18 @@ const APIGames = async (req, res) => {
 
 const myGames = async (req, res) => {
   try {
-    const sortBy = req.query.sortBy || "title" || "status" || "rating";
-    const order = req.query.order || "asc";
-    let query = knex("games")
-      .leftJoin("tags", "games.id", "tags.game_id") // Perform a LEFT JOIN to include all games, even those with no tags
-      .select("games.*", "tags.name as tag_name");
-    if (sortBy && sortBy !== "no_sort") {
-      query = query.orderBy(sortBy, order);
-    }
-    const games = await query;
-    console.log(games);
-
-    const formattedGames = games.reduce((acc, game) => {
-      const { id, title, status, rating, tag_name, coverArt, notes, summary } = game;
-
-      if (!acc[id]) {
-        acc[id] = {
-          id,
-          title,
-          status,
-          rating,
-          tags: [],
-          coverArt, 
-          notes, 
-          summary
-        };
+      const sortBy = req.query.sortBy || "title";
+      const order = req.query.order || "asc";
+      let query = knex("games");
+      if (sortBy && sortBy !== "no_sort") {
+        query = query.orderBy(sortBy, order);
       }
-      if (tag_name) {
-        acc[id].tags.push(tag_name);
+      const games = await knex('games').orderBy(sortBy, order);
+      res.status(200).json(games);
+  }catch (err) {
+      res.status(500).send(`Error retreiving my games library: ${err.message}`)
       }
-      return acc;
-    }, {});
-    const result = Object.values(formattedGames);
-    res.status(200).json(result);
-  } catch (err) {
-    res.status(500).send(`Error retreiving my games library: ${err.message}`);
-  }
-};
+  };
 
 const addGame = async (req, res) => {
   const { user_id, game_id, title, status, notes, tags, coverArt } = req.body; // <-- for validation , req.body needs db reqd values only
