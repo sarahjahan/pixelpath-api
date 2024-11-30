@@ -3,6 +3,7 @@ import * as tagsController from '../controllers/tags-controller.js';
 
 const router = express.Router();
 
-router.route("/").post(tagsController.addTags)
+router.route("/").get(tagsController.getTags)
+.put(tagsController.editTags)
 
 export default router;
