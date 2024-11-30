@@ -4,9 +4,10 @@
  */
 export function up(knex) {
     return knex.schema
-      .createTable("tags", (table) => {
+      .createTable("game_tags", (table) => {
         table.increments("id").primary();
-        table.string("name").notNullable().unique();
+        table.integer('tag_id').unsigned().notNullable().references('tags.id').onUpdate('CASCADE').onDelete('CASCADE');
+        table.integer('game_id').unsigned().notNullable().references('games.id').onUpdate('CASCADE').onDelete('CASCADE');
         table.timestamp("created_at").defaultTo(knex.fn.now());
         table
           .timestamp("updated_at")
@@ -19,5 +20,5 @@ export function up(knex) {
    * @returns { Promise<void> }
    */
   export function down(knex) {
-    return knex.schema.dropTable("tags");
+    return knex.schema.dropTable("game_tags");
   }

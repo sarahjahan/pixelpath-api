@@ -76,7 +76,17 @@ const myGames = async (req, res) => {
       if (sortBy && sortBy !== "no_sort") {
         query = query.orderBy(sortBy, order);
       }
-      const games = await knex('games').orderBy(sortBy, order);
+      const games = await knex("games")
+      .leftJoin("game_tags", "games.id", "game_tags.game_id")
+      .leftJoin("tags", "game_tags.tag_id", "tags.id")
+      .groupBy("games.id") // Ensure grouping by game ID
+      .select(
+        "games.id",
+        "games.title",
+        "games.user_id",
+        knex.raw('JSON_ARRAYAGG(JSON_OBJECT("id", tags.id, "name", tags.name)) as tags')
+      )
+      .orderBy(sortBy, order);
       res.status(200).json(games);
   }catch (err) {
       res.status(500).send(`Error retreiving my games library: ${err.message}`)
@@ -85,7 +95,7 @@ const myGames = async (req, res) => {
 
 const addGame = async (req, res) => {
   const { user_id, game_id, title, status, notes, tags, coverArt, genres } = req.body; // <-- for validation , req.body needs db reqd values only
-  if (!game_id) {
+  if (!game_id || !user_id || !title ) {
     return res.status(400).json({ error: "Missing required fields" });
   }
   try {
@@ -95,17 +105,58 @@ const addGame = async (req, res) => {
         .status(400)
         .json({ error: "Game already exists in the collection." });
     }
-    const [newGameID] = await knex("games").insert({
+    await knex("games").insert({
       id: game_id,
       user_id,
       title,
       coverArt,
-      tags,
       genres,
       notes: notes || null,
     });
-    const gameAdded = await knex("games").where({ id: newGameID });
-    res.status(201).json(gameAdded);
+    if (tags) {
+      const tagNames = tags.split(",").map((tag) => tag.trim());
+
+      const values = tagNames.map((name) => `('${name}')`).join(", ");
+      const rawInsertQuery = `
+        INSERT INTO tags (name)
+        VALUES ${values}
+        ON DUPLICATE KEY UPDATE name = name;
+      `;
+
+      // Execute the raw query for inserting tags
+      await knex.raw(rawInsertQuery);
+
+      // Fetch the tag IDs for the given tag names
+      const tagIds = await knex("tags").whereIn("name", tagNames).pluck("id");
+
+      // Insert entries into the `game_tags` junction table
+      const gameTagsInserts = tagIds.map((tagId) => ({
+        game_id: game_id,
+        tag_id: tagId,
+      }));
+      await knex("game_tags").insert(gameTagsInserts);
+    }
+
+    const gameAdded = await knex("games")
+      .where("games.id", game_id) // Explicitly specify `games.id`
+      .select(
+        "games.id",
+        "games.title",
+        "games.coverArt",
+        "games.genres",
+        "games.notes",
+        knex.raw(`
+          COALESCE(
+            JSON_ARRAYAGG(
+              JSON_OBJECT("id", tags.id, "name", tags.name)
+            ), JSON_ARRAY()
+          ) as tags
+        `)
+      )
+      .leftJoin("game_tags", "games.id", "game_tags.game_id")
+      .leftJoin("tags", "game_tags.tag_id", "tags.id")
+      .groupBy("games.id");
+    res.status(201).json(gameAdded[0]);
   } catch (err) {
     res.status(500).send(`Unable to add game: ${err.message}`);
   }
