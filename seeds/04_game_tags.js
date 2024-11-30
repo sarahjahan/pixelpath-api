@@ -11,7 +11,7 @@ export async function seed(knex) {
       { id: 3, game_id: 1, tag_id: 3 },
       { id: 4, game_id: 2, tag_id: 3 },
       { id: 5, game_id: 2, tag_id: 4 },
-      { id: 6, game_id: 2, tag_id: 4 },
+      { id: 6, game_id: 3, tag_id: 4 },
     ]);
   };
   
