@@ -2,18 +2,19 @@ import initKnex from "knex";
 import configuration from "../knexfile.js";
 const knex = initKnex(configuration);
 import axios from "axios";
+
 const { API_KEY, CLIENT_ID } = process.env;
 
 const getGamesList = async () => {
   try {
-    const query = `
+    const body = `
             fields name, genres.name, storyline, themes.name, cover.url; 
-            where aggregated_rating > 97;
+            where aggregated_rating > 80;
             sort aggregated_rating asc;
-            limit 20;`;
+            limit 50;`;
     const apiResponse = await axios.post(
       "https://api.igdb.com/v4/games",
-      query,
+      body,
       {
         headers: {
           "Client-ID": CLIENT_ID,
@@ -32,15 +33,20 @@ const getGamesList = async () => {
 };
 
 const mapApiToDbFields = (apiResult) => {
+
   return {
     id: apiResult.id, // Maps 'id' from API to 'gameID' in DB
     title: apiResult.name, // Maps 'name' from API to 'title' in DB
-    genres: apiResult.genres[0].name,
+    genres: apiResult.genres.map(genre => genre.name).join(", ") || "No genres available",
+    tags: apiResult.themes && apiResult.themes.length > 0 
+    ? apiResult.themes.map(theme => theme.name).join(", ") 
+    : "No tags available",
     // ? apiResult.genres.join(", ") : null, Convert genres array to a string
     coverArt: apiResult.cover.url || null, // Handles missing cover art
     summary: apiResult.storyline || null, // Optional field
   };
 };
+
 
 const APIGames = async (req, res) => {
   try {
@@ -78,8 +84,8 @@ const myGames = async (req, res) => {
   };
 
 const addGame = async (req, res) => {
-  const { user_id, game_id, title, status, notes, tags, coverArt } = req.body; // <-- for validation , req.body needs db reqd values only
-  if (!game_id || !title) {
+  const { user_id, game_id, title, status, notes, tags, coverArt, genres } = req.body; // <-- for validation , req.body needs db reqd values only
+  if (!game_id) {
     return res.status(400).json({ error: "Missing required fields" });
   }
   try {
@@ -94,7 +100,8 @@ const addGame = async (req, res) => {
       user_id,
       title,
       coverArt,
-      tags: tags ? tags.join(", ") : null,
+      tags,
+      genres,
       notes: notes || null,
     });
     const gameAdded = await knex("games").where({ id: newGameID });
@@ -124,7 +131,7 @@ const singleGame = async (req, res) => {
     }
 
     const formattedGame = gameQuery.reduce((acc, game) => {
-      const { id, title, status, rating, tag_name, coverArt, notes, summary } = game;
+      const { id, title, status, rating, tag_name, coverArt, notes, summary, genres } = game;
 
       if (!acc[id]) {
         acc[id] = {
@@ -135,7 +142,8 @@ const singleGame = async (req, res) => {
           tags: [],
           coverArt, 
           notes, 
-          summary
+          summary, 
+          genres,
         };
       }
 

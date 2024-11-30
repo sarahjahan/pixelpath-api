@@ -12,6 +12,7 @@ export function up(knex) {
         table.string('coverArt').notNullable();
         table.string('status').defaultTo('Want To Play');
         table.integer('rating').notNullable().defaultTo(0);
+        table.text('genres');
         table.text('notes');
         table.string('tags');
         table.timestamp("created_at").defaultTo(knex.fn.now());
