@@ -223,13 +223,21 @@ const singleGame = async (req, res) => {
 
 const editGame = async (req, res) => {
   const { gameid } = req.params;
-  const { tags, ...gameDetails } = req.body;
+  const { tags, removedTags, ...gameDetails } = req.body;
 
   try {
     // Step 1: Update game details
     const rowsUpdated = await knex("games").where({ id: gameid }).update(gameDetails);
     if (rowsUpdated === 0) {
       return res.status(404).json({ message: `Game with ID ${gameid} not found.` });
+    }
+
+    if (removedTags && Array.isArray(removedTags)) {
+      const removedTagIds = removedTags.map((tag) => tag.id);
+      await knex("game_tags")
+        .where({ game_id: gameid })
+        .whereIn("tag_id", removedTagIds)
+        .del();
     }
 
     // Step 2: Handle tags (if provided)
