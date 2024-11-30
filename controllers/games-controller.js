@@ -33,15 +33,20 @@ const getGamesList = async () => {
 };
 
 const mapApiToDbFields = (apiResult) => {
+  const genres = apiResult.genres && apiResult.genres.length > 0 
+    ? apiResult.genres.map((genre) => genre.name).join(", ") 
+    : null;
+
+  const themes = apiResult.themes && apiResult.themes.length > 0 
+    ? apiResult.themes.map((theme) => theme.name).join(", ") 
+    : null;
+
+  const combinedTags = [genres, themes].filter(Boolean).join(", ") || "No tags available";
 
   return {
     id: apiResult.id, // Maps 'id' from API to 'gameID' in DB
     title: apiResult.name, // Maps 'name' from API to 'title' in DB
-    genres: apiResult.genres.map(genre => genre.name).join(", ") || "No genres available",
-    tags: apiResult.themes && apiResult.themes.length > 0 
-    ? apiResult.themes.map(theme => theme.name).join(", ") 
-    : "No tags available",
-    // ? apiResult.genres.join(", ") : null, Convert genres array to a string
+    tags: combinedTags, 
     coverArt: apiResult.cover.url || null, // Handles missing cover art
     summary: apiResult.storyline || null, // Optional field
   };
@@ -84,6 +89,11 @@ const myGames = async (req, res) => {
         "games.id",
         "games.title",
         "games.user_id",
+        "games.coverArt",
+        "games.status",
+        "games.summary",
+        "games.rating",
+        "games.notes",
         knex.raw('JSON_ARRAYAGG(JSON_OBJECT("id", tags.id, "name", tags.name)) as tags')
       )
       .orderBy(sortBy, order);
@@ -94,7 +104,7 @@ const myGames = async (req, res) => {
   };
 
 const addGame = async (req, res) => {
-  const { user_id, game_id, title, status, notes, tags, coverArt, genres } = req.body; // <-- for validation , req.body needs db reqd values only
+  const { user_id, game_id, title, status, notes, tags, coverArt } = req.body; // <-- for validation , req.body needs db reqd values only
   if (!game_id || !user_id || !title ) {
     return res.status(400).json({ error: "Missing required fields" });
   }
@@ -110,7 +120,6 @@ const addGame = async (req, res) => {
       user_id,
       title,
       coverArt,
-      genres,
       notes: notes || null,
     });
     if (tags) {
@@ -143,7 +152,6 @@ const addGame = async (req, res) => {
         "games.id",
         "games.title",
         "games.coverArt",
-        "games.genres",
         "games.notes",
         knex.raw(`
           COALESCE(
@@ -171,41 +179,40 @@ const singleGame = async (req, res) => {
         .json({ message: `Game with ID ${id} does not exist` });
     }
     const gameQuery = await knex("games")
-      .leftJoin("tags", "games.id", "tags.game_id")
-      .select("games.*", "tags.name as tag_name")
-      .where("games.id", gameid);
+    .leftJoin("game_tags", "games.id", "game_tags.game_id") // Join with junction table
+    .leftJoin("tags", "game_tags.tag_id", "tags.id") // Join with tags table
+    .select(
+      "games.id",
+      "games.title",
+      "games.status",
+      "games.rating",
+      "games.coverArt",
+      "games.notes",
+      "games.summary",
+      knex.raw(`
+        COALESCE(
+            JSON_ARRAYAGG(
+              CASE
+                WHEN tags.id IS NOT NULL THEN JSON_OBJECT("id", tags.id, "name", tags.name)
+                ELSE NULL
+              END
+            ),
+            JSON_ARRAY()
+          ) as tags
+        `)
+    )
+    .where("games.id", gameid)
+    .groupBy("games.id"); // Group by game ID to aggregate tags
 
+    // If no game is found
     if (gameQuery.length === 0) {
       return res
         .status(404)
         .json({ message: `Game with ID ${gameid} not found.` });
     }
 
-    const formattedGame = gameQuery.reduce((acc, game) => {
-      const { id, title, status, rating, tag_name, coverArt, notes, summary, genres } = game;
-
-      if (!acc[id]) {
-        acc[id] = {
-          id,
-          title,
-          status,
-          rating,
-          tags: [],
-          coverArt, 
-          notes, 
-          summary, 
-          genres,
-        };
-      }
-
-      if (tag_name) {
-        acc[id].tags.push(tag_name);
-      }
-
-      return acc;
-    }, {});
-
-    const getGameDetails = Object.values(formattedGame)[0];
+    // Return the formatted game details
+    const getGameDetails = gameQuery[0];
     res.status(200).json(getGameDetails);
   } catch (error) {
     res.status(500).json({
@@ -216,23 +223,59 @@ const singleGame = async (req, res) => {
 
 const editGame = async (req, res) => {
   const { gameid } = req.params;
-  // console.log(req.params.id);
-  // console.log(gameid)
-  // console.log(req.params)
+  const { tags, ...gameDetails } = req.body;
+
   try {
-    const rowsUpdated = await knex("games")
-      .where({ id: gameid })
-      .update(req.body);
+    // Step 1: Update game details
+    const rowsUpdated = await knex("games").where({ id: gameid }).update(gameDetails);
     if (rowsUpdated === 0) {
-      return res.status(404).json({
-        message: `Game with ID ${req.params.gameid} not found, ${error}`,
-      });
+      return res.status(404).json({ message: `Game with ID ${gameid} not found.` });
     }
-    const updatedGame = await knex("games").where({ id: gameid });
-    res.status(200).json(updatedGame[0]);
+
+    // Step 2: Handle tags (if provided)
+    if (tags && Array.isArray(tags)) {
+      // Validate tags: Ensure all tags have `id` and `name`
+      const invalidTags = tags.filter((tag) => !tag.id || !tag.name);
+      if (invalidTags.length > 0) {
+        return res.status(400).json({
+          message: "Invalid tags provided. Each tag must have a valid `id` and `name`.",
+        });
+      }
+
+      // Extract tag IDs from the validated tags
+      const tagIds = tags.map((tag) => tag.id);
+
+      // Fetch existing game-tag associations
+      const existingAssociations = await knex("game_tags")
+        .where({ game_id: gameid })
+        .pluck("tag_id");
+
+      // Determine which tag IDs to associate with the game
+      const newAssociations = tagIds
+        .filter((id) => !existingAssociations.includes(id)) // Avoid duplicates
+        .map((tagId) => ({
+          game_id: gameid,
+          tag_id: tagId,
+        }));
+
+      // Insert new associations into the game_tags table
+      if (newAssociations.length > 0) {
+        await knex("game_tags").insert(newAssociations);
+      }
+    }
+
+    // Step 3: Fetch updated game with tags
+    const updatedGame = await knex("games").where({ id: gameid }).first();
+    const updatedTags = await knex("tags")
+      .join("game_tags", "tags.id", "game_tags.tag_id")
+      .where("game_tags.game_id", gameid)
+      .select("tags.id", "tags.name"); // Include both `id` and `name` in the response
+
+    res.status(200).json({ ...updatedGame, tags: updatedTags });
   } catch (error) {
+    console.error("Error updating game:", error);
     res.status(500).json({
-      message: `Unable to update games with ID ${req.params.gameid}: ${error}`,
+      message: `Unable to update game with ID ${gameid}: ${error.message}`,
     });
   }
 };
