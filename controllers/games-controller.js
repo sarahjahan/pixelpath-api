@@ -26,7 +26,7 @@ const getGamesList = async () => {
     const limitedResponse = apiResponse.data.map((game) => ({
       ...game,
       genres: game.genres ? game.genres.slice(0, 2) : [],
-      themes: game.themes ? game.themes.slice(0, 1) : [], 
+      themes: game.themes ? game.themes.slice(0, 1) : [],
     }));
     const mappedResults = limitedResponse.map((apiResult) =>
       mapApiToDbFields(apiResult)
@@ -34,28 +34,31 @@ const getGamesList = async () => {
     return mappedResults;
   } catch (err) {
     console.error("Error retrieving games:", err);
-  }};
+  }
+};
 
 const mapApiToDbFields = (apiResult) => {
-  const genres = apiResult.genres && apiResult.genres.length > 0 
-    ? apiResult.genres.map((genre) => genre.name).join(", ") 
-    : null;
+  const genres =
+    apiResult.genres && apiResult.genres.length > 0
+      ? apiResult.genres.map((genre) => genre.name).join(", ")
+      : null;
 
-  const themes = apiResult.themes && apiResult.themes.length > 0 
-    ? apiResult.themes.map((theme) => theme.name).join(", ") 
-    : null;
+  const themes =
+    apiResult.themes && apiResult.themes.length > 0
+      ? apiResult.themes.map((theme) => theme.name).join(", ")
+      : null;
 
-  const combinedTags = [genres, themes].filter(Boolean).join(", ") || "No tags available";
+  const combinedTags =
+    [genres, themes].filter(Boolean).join(", ") || "No tags available";
 
   return {
-    id: apiResult.id, 
-    title: apiResult.name, 
-    tags: combinedTags, 
-    coverArt: apiResult.cover.url || null, 
+    id: apiResult.id,
+    title: apiResult.name,
+    tags: combinedTags,
+    coverArt: apiResult.cover.url || null,
     summary: apiResult.summary || null,
   };
 };
-
 
 const APIGames = async (req, res) => {
   try {
@@ -77,13 +80,13 @@ const APIGames = async (req, res) => {
 
 const myGames = async (req, res) => {
   try {
-      const sortBy = req.query.sortBy || "title";
-      const order = req.query.order || "asc";
-      let query = knex("games");
-      if (sortBy && sortBy !== "no_sort") {
-        query = query.orderBy(sortBy, order);
-      }
-      const games = await knex("games")
+    const sortBy = req.query.sortBy || "title";
+    const order = req.query.order || "asc";
+    let query = knex("games");
+    if (sortBy && sortBy !== "no_sort") {
+      query = query.orderBy(sortBy, order);
+    }
+    const games = await knex("games")
       .leftJoin("game_tags", "games.id", "game_tags.game_id")
       .leftJoin("tags", "game_tags.tag_id", "tags.id")
       .groupBy("games.id")
@@ -96,18 +99,20 @@ const myGames = async (req, res) => {
         "games.summary",
         "games.rating",
         "games.notes",
-        knex.raw('JSON_ARRAYAGG(JSON_OBJECT("id", tags.id, "name", tags.name)) as tags')
+        knex.raw(
+          'JSON_ARRAYAGG(JSON_OBJECT("id", tags.id, "name", tags.name)) as tags'
+        )
       )
       .orderBy(sortBy, order);
-      res.status(200).json(games);
-  }catch (err) {
-      res.status(500).send(`Error retreiving my games library: ${err.message}`)
-      }
-  };
+    res.status(200).json(games);
+  } catch (err) {
+    res.status(500).send(`Error retreiving my games library: ${err.message}`);
+  }
+};
 
 const addGame = async (req, res) => {
-  const { user_id, game_id, title, status, notes, tags, coverArt } = req.body; 
-  if (!game_id || !user_id || !title ) {
+  const { user_id, game_id, title, status, notes, tags, coverArt } = req.body;
+  if (!game_id || !user_id || !title) {
     return res.status(400).json({ error: "Missing required fields" });
   }
   try {
@@ -145,7 +150,7 @@ const addGame = async (req, res) => {
     }
 
     const gameAdded = await knex("games")
-      .where("games.id", game_id) 
+      .where("games.id", game_id)
       .select(
         "games.id",
         "games.title",
@@ -177,17 +182,17 @@ const singleGame = async (req, res) => {
         .json({ message: `Game with ID ${id} does not exist` });
     }
     const gameQuery = await knex("games")
-    .leftJoin("game_tags", "games.id", "game_tags.game_id") 
-    .leftJoin("tags", "game_tags.tag_id", "tags.id") 
-    .select(
-      "games.id",
-      "games.title",
-      "games.status",
-      "games.rating",
-      "games.coverArt",
-      "games.notes",
-      "games.summary",
-      knex.raw(`
+      .leftJoin("game_tags", "games.id", "game_tags.game_id")
+      .leftJoin("tags", "game_tags.tag_id", "tags.id")
+      .select(
+        "games.id",
+        "games.title",
+        "games.status",
+        "games.rating",
+        "games.coverArt",
+        "games.notes",
+        "games.summary",
+        knex.raw(`
         COALESCE(
             JSON_ARRAYAGG(
               CASE
@@ -198,9 +203,9 @@ const singleGame = async (req, res) => {
             JSON_ARRAY()
           ) as tags
         `)
-    )
-    .where("games.id", gameid)
-    .groupBy("games.id"); 
+      )
+      .where("games.id", gameid)
+      .groupBy("games.id");
 
     if (gameQuery.length === 0) {
       return res
@@ -222,9 +227,13 @@ const editGame = async (req, res) => {
   const { tags, removedTags, ...gameDetails } = req.body;
 
   try {
-    const rowsUpdated = await knex("games").where({ id: gameid }).update(gameDetails);
+    const rowsUpdated = await knex("games")
+      .where({ id: gameid })
+      .update(gameDetails);
     if (rowsUpdated === 0) {
-      return res.status(404).json({ message: `Game with ID ${gameid} not found.` });
+      return res
+        .status(404)
+        .json({ message: `Game with ID ${gameid} not found.` });
     }
 
     if (removedTags && Array.isArray(removedTags)) {
@@ -238,7 +247,8 @@ const editGame = async (req, res) => {
       const invalidTags = tags.filter((tag) => !tag.id || !tag.name);
       if (invalidTags.length > 0) {
         return res.status(400).json({
-          message: "Invalid tags provided. Each tag must have a valid `id` and `name`.",
+          message:
+            "Invalid tags provided. Each tag must have a valid `id` and `name`.",
         });
       }
 
@@ -248,7 +258,7 @@ const editGame = async (req, res) => {
         .pluck("tag_id");
 
       const newAssociations = tagIds
-        .filter((id) => !existingAssociations.includes(id)) 
+        .filter((id) => !existingAssociations.includes(id))
         .map((tagId) => ({
           game_id: gameid,
           tag_id: tagId,
@@ -263,7 +273,7 @@ const editGame = async (req, res) => {
     const updatedTags = await knex("tags")
       .join("game_tags", "tags.id", "game_tags.tag_id")
       .where("game_tags.game_id", gameid)
-      .select("tags.id", "tags.name"); 
+      .select("tags.id", "tags.name");
 
     res.status(200).json({ ...updatedGame, tags: updatedTags });
   } catch (error) {

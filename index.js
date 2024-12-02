@@ -18,7 +18,6 @@ import tagsRoutes from "./routes/tags-routes.js";
 app.use("/api/games", gamesRoutes);
 app.use("/api/tags", tagsRoutes);
 
-
 app.listen(PORT, () => {
   console.log(`Server is listening at ${BACKEND_URL}:${PORT}`);
 });
