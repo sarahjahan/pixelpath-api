@@ -3,7 +3,6 @@
  * @returns { Promise<void> } 
  */
 export async function seed(knex) {
-    // Deletes ALL existing entries
     await knex('game_tags').del()
     await knex('game_tags').insert([
       { id: 1, game_id: 1, tag_id: 1 },

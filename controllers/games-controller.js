@@ -8,10 +8,10 @@ const { API_KEY, CLIENT_ID } = process.env;
 const getGamesList = async () => {
   try {
     const body = `
-            fields name, genres.name, storyline, themes.name, cover.url; 
+            fields name, genres.name, summary, themes.name, cover.url; 
             where aggregated_rating > 80;
             sort aggregated_rating asc;
-            limit 50;`;
+            limit 200;`;
     const apiResponse = await axios.post(
       "https://api.igdb.com/v4/games",
       body,
@@ -23,14 +23,18 @@ const getGamesList = async () => {
       }
     );
     console.log("Games retrieved from API");
-    const mappedResults = apiResponse.data.map((apiResult) =>
+    const limitedResponse = apiResponse.data.map((game) => ({
+      ...game,
+      genres: game.genres ? game.genres.slice(0, 2) : [],
+      themes: game.themes ? game.themes.slice(0, 1) : [], 
+    }));
+    const mappedResults = limitedResponse.map((apiResult) =>
       mapApiToDbFields(apiResult)
     );
     return mappedResults;
   } catch (err) {
-    console.error("Error retreiving games:", err);
-  }
-};
+    console.error("Error retrieving games:", err);
+  }};
 
 const mapApiToDbFields = (apiResult) => {
   const genres = apiResult.genres && apiResult.genres.length > 0 
@@ -44,11 +48,11 @@ const mapApiToDbFields = (apiResult) => {
   const combinedTags = [genres, themes].filter(Boolean).join(", ") || "No tags available";
 
   return {
-    id: apiResult.id, // Maps 'id' from API to 'gameID' in DB
-    title: apiResult.name, // Maps 'name' from API to 'title' in DB
+    id: apiResult.id, 
+    title: apiResult.name, 
     tags: combinedTags, 
-    coverArt: apiResult.cover.url || null, // Handles missing cover art
-    summary: apiResult.storyline || null, // Optional field
+    coverArt: apiResult.cover.url || null, 
+    summary: apiResult.summary || null,
   };
 };
 
@@ -60,10 +64,8 @@ const APIGames = async (req, res) => {
     const dbGameIDs = myGames.map((game) => game.id);
     const gamesWithOwnership = apiGames.map((APIGame) => {
       if (dbGameIDs.includes(APIGame.id)) {
-        // Game is in collection, add "isOwned" property as true
         return { ...APIGame, isOwned: true, status: "Want to Play" };
       }
-      // Otherwise, just return original game with "isOwned" as false
       return { ...APIGame, isOwned: false, status: "Want to Play" };
     });
 
@@ -84,7 +86,7 @@ const myGames = async (req, res) => {
       const games = await knex("games")
       .leftJoin("game_tags", "games.id", "game_tags.game_id")
       .leftJoin("tags", "game_tags.tag_id", "tags.id")
-      .groupBy("games.id") // Ensure grouping by game ID
+      .groupBy("games.id")
       .select(
         "games.id",
         "games.title",
@@ -104,7 +106,7 @@ const myGames = async (req, res) => {
   };
 
 const addGame = async (req, res) => {
-  const { user_id, game_id, title, status, notes, tags, coverArt } = req.body; // <-- for validation , req.body needs db reqd values only
+  const { user_id, game_id, title, status, notes, tags, coverArt } = req.body; 
   if (!game_id || !user_id || !title ) {
     return res.status(400).json({ error: "Missing required fields" });
   }
@@ -132,13 +134,9 @@ const addGame = async (req, res) => {
         ON DUPLICATE KEY UPDATE name = name;
       `;
 
-      // Execute the raw query for inserting tags
       await knex.raw(rawInsertQuery);
 
-      // Fetch the tag IDs for the given tag names
       const tagIds = await knex("tags").whereIn("name", tagNames).pluck("id");
-
-      // Insert entries into the `game_tags` junction table
       const gameTagsInserts = tagIds.map((tagId) => ({
         game_id: game_id,
         tag_id: tagId,
@@ -147,7 +145,7 @@ const addGame = async (req, res) => {
     }
 
     const gameAdded = await knex("games")
-      .where("games.id", game_id) // Explicitly specify `games.id`
+      .where("games.id", game_id) 
       .select(
         "games.id",
         "games.title",
@@ -179,8 +177,8 @@ const singleGame = async (req, res) => {
         .json({ message: `Game with ID ${id} does not exist` });
     }
     const gameQuery = await knex("games")
-    .leftJoin("game_tags", "games.id", "game_tags.game_id") // Join with junction table
-    .leftJoin("tags", "game_tags.tag_id", "tags.id") // Join with tags table
+    .leftJoin("game_tags", "games.id", "game_tags.game_id") 
+    .leftJoin("tags", "game_tags.tag_id", "tags.id") 
     .select(
       "games.id",
       "games.title",
@@ -202,16 +200,14 @@ const singleGame = async (req, res) => {
         `)
     )
     .where("games.id", gameid)
-    .groupBy("games.id"); // Group by game ID to aggregate tags
+    .groupBy("games.id"); 
 
-    // If no game is found
     if (gameQuery.length === 0) {
       return res
         .status(404)
         .json({ message: `Game with ID ${gameid} not found.` });
     }
 
-    // Return the formatted game details
     const getGameDetails = gameQuery[0];
     res.status(200).json(getGameDetails);
   } catch (error) {
@@ -226,7 +222,6 @@ const editGame = async (req, res) => {
   const { tags, removedTags, ...gameDetails } = req.body;
 
   try {
-    // Step 1: Update game details
     const rowsUpdated = await knex("games").where({ id: gameid }).update(gameDetails);
     if (rowsUpdated === 0) {
       return res.status(404).json({ message: `Game with ID ${gameid} not found.` });
@@ -239,10 +234,7 @@ const editGame = async (req, res) => {
         .whereIn("tag_id", removedTagIds)
         .del();
     }
-
-    // Step 2: Handle tags (if provided)
     if (tags && Array.isArray(tags)) {
-      // Validate tags: Ensure all tags have `id` and `name`
       const invalidTags = tags.filter((tag) => !tag.id || !tag.name);
       if (invalidTags.length > 0) {
         return res.status(400).json({
@@ -250,34 +242,28 @@ const editGame = async (req, res) => {
         });
       }
 
-      // Extract tag IDs from the validated tags
       const tagIds = tags.map((tag) => tag.id);
-
-      // Fetch existing game-tag associations
       const existingAssociations = await knex("game_tags")
         .where({ game_id: gameid })
         .pluck("tag_id");
 
-      // Determine which tag IDs to associate with the game
       const newAssociations = tagIds
-        .filter((id) => !existingAssociations.includes(id)) // Avoid duplicates
+        .filter((id) => !existingAssociations.includes(id)) 
         .map((tagId) => ({
           game_id: gameid,
           tag_id: tagId,
         }));
 
-      // Insert new associations into the game_tags table
       if (newAssociations.length > 0) {
         await knex("game_tags").insert(newAssociations);
       }
     }
 
-    // Step 3: Fetch updated game with tags
     const updatedGame = await knex("games").where({ id: gameid }).first();
     const updatedTags = await knex("tags")
       .join("game_tags", "tags.id", "game_tags.tag_id")
       .where("game_tags.game_id", gameid)
-      .select("tags.id", "tags.name"); // Include both `id` and `name` in the response
+      .select("tags.id", "tags.name"); 
 
     res.status(200).json({ ...updatedGame, tags: updatedTags });
   } catch (error) {
@@ -299,7 +285,6 @@ const removeGame = async (req, res) => {
         .json({ message: `Game with ID ${{ id: gameid }} not found` });
     }
     const removedGame = await knex("games").where({ id: gameid }).del();
-    // No Content response
     res.sendStatus(204);
   } catch (error) {
     res.status(500).json({
@@ -307,8 +292,5 @@ const removeGame = async (req, res) => {
     });
   }
 };
-
-
-
 
 export { APIGames, myGames, addGame, editGame, removeGame, singleGame };
