@@ -4,7 +4,9 @@ import cors from "cors";
 
 const app = express();
 
-const { PORT, BACKEND_URL, CORS_ORIGIN } = process.env;
+
+const PORT = process.env.PORT || 8080;
+const { BACKEND_URL, CORS_ORIGIN } = process.env;
 
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json());
@@ -19,5 +21,5 @@ app.use("/api/games", gamesRoutes);
 app.use("/api/tags", tagsRoutes);
 
 app.listen(PORT, () => {
-  console.log(`Server is listening at ${BACKEND_URL}:${PORT}`);
+  console.log(`Server is listening on ${BACKEND_URL}:${PORT}`);
 });
