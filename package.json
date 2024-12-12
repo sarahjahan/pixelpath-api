@@ -4,6 +4,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "start": "node index.js",
+    "heroku-postbuild": "npm install",
     "dev": "node --watch index.js",
     "db:latest": "npx knex migrate:latest",
     "db:rollback": "knex migrate:rollback",
