@@ -6,9 +6,21 @@ const app = express();
 
 
 const PORT = process.env.PORT || 8080;
-const { BACKEND_URL, CORS_ORIGIN } = process.env;
+const { CORS_ORIGIN } = process.env;
 
-app.use(cors({ origin: CORS_ORIGIN }));
+const allowedOrigins = [CORS_ORIGIN, 'http://localhost:8080'];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+  })
+);
 app.use(express.json());
 app.use(express.static("public"));
 
@@ -20,6 +32,10 @@ import tagsRoutes from "./routes/tags-routes.js";
 app.use("/api/games", gamesRoutes);
 app.use("/api/tags", tagsRoutes);
 
+app.get('/test-cors', (req, res) => {
+  res.json({ message: 'CORS is working!' });
+});
+
 app.listen(PORT, () => {
-  console.log(`Server is listening on ${BACKEND_URL}:${PORT}`);
+  console.log(`Server is listening on ${PORT}`);
 });
