@@ -1,6 +1,11 @@
 import initKnex from "knex";
 import configuration from "../knexfile.js";
 import bcrypt from "bcrypt"
+import authenticateToken from "../middleware/authenticateToken.js";
+import jwt from "jsonwebtoken";
+
+
+
 const knex = initKnex(configuration);
 
 function validateInput(email, password) {
@@ -57,14 +62,21 @@ const loginUser = async (req, res) => {
 
     // Check if the user exists
     const user = await knex("users").where({ email }).first();
+    console.log("User fetched from DB:", user);
+
+
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials." });
+      return res.status(401).json({ error: "Invalid user credentials." });
     }
 
     // Compare the password with the hashed password in the database
-    const validPassword = await bcrypt.compare(password, user.password_hash);
+    const validPassword = await bcrypt.compare(password, user.password); // Ensure correct field name
+    console.log("Password from request:", password);
+    console.log("Hashed password from DB:", user.password);
+    console.log("Password comparison result:", validPassword);
+
     if (!validPassword) {
-      return res.status(401).json({ error: "Invalid credentials." });
+      return res.status(401).json({ error: "Invalid pass credentials." });
     }
 
     // Generate a JWT
@@ -77,10 +89,29 @@ const loginUser = async (req, res) => {
     // Send the token back to the client
     res.status(200).json({ message: "Login successful", token });
   } catch (error) {
-    console.error(error);
+    console.error("Error during login:", error.message);
     res.status(500).json({ error: "Internal server error." });
   }
+
 };
 
 
-export { createUser, loginUser };
+const authenticateJWT = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+      return res.sendStatus(403);
+  }
+
+  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
+      if (err) {
+          return res.sendStatus(403);
+      }
+      req.user = user; // Attach user info to the request object
+      next();
+  });
+};
+
+
+
+export { createUser, loginUser, authenticateJWT };

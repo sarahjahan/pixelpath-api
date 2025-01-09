@@ -10,6 +10,10 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: "Access denied. No token provided." });
   }
 
+  // if (!process.env.JWT_SECRET) {
+  //   throw new Error("JWT_SECRET is not defined in the environment variables.");
+  // }
+
   try {
     // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -19,5 +23,7 @@ const authenticateToken = (req, res, next) => {
     res.status(403).json({ error: "Invalid or expired token." });
   }
 };
+
+
 
 export default authenticateToken;
