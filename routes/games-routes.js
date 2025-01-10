@@ -1,9 +1,11 @@
 import express from "express";
 import * as gamesController from "../controllers/games-controller.js";
+import authenticateToken from "../middlewares/authenticateToken.js";
+
 
 const router = express.Router();
 
-router.route("/search").get(gamesController.APIGames);
+router.route("/search").get(authenticateToken, gamesController.APIGames);
 
 router.route("/").get(gamesController.myGames).post(gamesController.addGame);
 

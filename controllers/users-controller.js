@@ -1,7 +1,6 @@
 import initKnex from "knex";
 import configuration from "../knexfile.js";
 import bcrypt from "bcrypt"
-import authenticateToken from "../middleware/authenticateToken.js";
 import jwt from "jsonwebtoken";
 
 
@@ -96,22 +95,22 @@ const loginUser = async (req, res) => {
 };
 
 
-const authenticateJWT = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
+// const authenticateJWT = (req, res, next) => {
+//   const token = req.headers.authorization?.split(" ")[1];
 
-  if (!token) {
-      return res.sendStatus(403);
-  }
+//   if (!token) {
+//       return res.sendStatus(403);
+//   }
 
-  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
-      if (err) {
-          return res.sendStatus(403);
-      }
-      req.user = user; // Attach user info to the request object
-      next();
-  });
-};
+//   jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
+//       if (err) {
+//           return res.sendStatus(403);
+//       }
+//       req.user = user; // Attach user info to the request object
+//       next();
+//   });
+// };
 
 
 
-export { createUser, loginUser, authenticateJWT };
+export { createUser, loginUser };
