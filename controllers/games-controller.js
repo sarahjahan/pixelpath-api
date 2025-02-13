@@ -12,6 +12,7 @@ const getGamesList = async () => {
             where aggregated_rating > 80;
             sort aggregated_rating asc;
             limit 200;`;
+
     const apiResponse = await axios.post(
       "https://api.igdb.com/v4/games",
       body,
@@ -22,18 +23,23 @@ const getGamesList = async () => {
         },
       }
     );
-    console.log("Games retrieved from API");
+
+    console.log("API Response:", apiResponse.data);
+
+    if (!apiResponse.data || !Array.isArray(apiResponse.data)) {
+      throw new Error("Invalid API response structure");
+    }
+
     const limitedResponse = apiResponse.data.map((game) => ({
       ...game,
       genres: game.genres ? game.genres.slice(0, 2) : [],
       themes: game.themes ? game.themes.slice(0, 1) : [],
     }));
-    const mappedResults = limitedResponse.map((apiResult) =>
-      mapApiToDbFields(apiResult)
-    );
-    return mappedResults;
+
+    return limitedResponse.map(mapApiToDbFields);
   } catch (err) {
     console.error("Error retrieving games:", err);
+    return []; // Return an empty array instead of undefined
   }
 };
 
@@ -63,18 +69,26 @@ const mapApiToDbFields = (apiResult) => {
 const APIGames = async (req, res) => {
   try {
     const apiGames = await getGamesList();
-    const myGames = await knex("games").select("id");
-    const dbGameIDs = myGames.map((game) => game.id);
-    const gamesWithOwnership = apiGames.map((APIGame) => {
-      if (dbGameIDs.includes(APIGame.id)) {
-        return { ...APIGame, isOwned: true, status: "Want to Play" };
-      }
-      return { ...APIGame, isOwned: false, status: "Want to Play" };
+    
+    if (!Array.isArray(apiGames)) {
+      throw new Error("Invalid apiGames response: not an array");
+    }
+
+    const myGames = await knex("games").select("id").catch((err) => {
+      console.error("Database query error:", err);
+      return [];
     });
+
+    const dbGameIDs = myGames.map((game) => game.id);
+    const gamesWithOwnership = apiGames.map((APIGame) => ({
+      ...APIGame,
+      isOwned: dbGameIDs.includes(APIGame.id),
+      status: "Want to Play",
+    }));
 
     res.status(200).json(gamesWithOwnership);
   } catch (err) {
-    res.status(500).send(`Error retreiving games list: ${err.message}`);
+    res.status(500).send(`Error retrieving games list: ${err.message}`);
   }
 };
 
